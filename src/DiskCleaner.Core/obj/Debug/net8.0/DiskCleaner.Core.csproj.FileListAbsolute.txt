@@ -1,0 +1,11 @@
+C:\Users\huawe\Desktop\cleaner\DiskCleanerPro\src\DiskCleaner.Core\bin\Debug\net8.0\DiskCleaner.Core.deps.json
+C:\Users\huawe\Desktop\cleaner\DiskCleanerPro\src\DiskCleaner.Core\bin\Debug\net8.0\DiskCleaner.Core.dll
+C:\Users\huawe\Desktop\cleaner\DiskCleanerPro\src\DiskCleaner.Core\bin\Debug\net8.0\DiskCleaner.Core.pdb
+C:\Users\huawe\Desktop\cleaner\DiskCleanerPro\src\DiskCleaner.Core\obj\Debug\net8.0\DiskCleaner.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\huawe\Desktop\cleaner\DiskCleanerPro\src\DiskCleaner.Core\obj\Debug\net8.0\DiskCleaner.Core.AssemblyInfoInputs.cache
+C:\Users\huawe\Desktop\cleaner\DiskCleanerPro\src\DiskCleaner.Core\obj\Debug\net8.0\DiskCleaner.Core.AssemblyInfo.cs
+C:\Users\huawe\Desktop\cleaner\DiskCleanerPro\src\DiskCleaner.Core\obj\Debug\net8.0\DiskCleaner.Core.csproj.CoreCompileInputs.cache
+C:\Users\huawe\Desktop\cleaner\DiskCleanerPro\src\DiskCleaner.Core\obj\Debug\net8.0\DiskCleaner.Core.dll
+C:\Users\huawe\Desktop\cleaner\DiskCleanerPro\src\DiskCleaner.Core\obj\Debug\net8.0\refint\DiskCleaner.Core.dll
+C:\Users\huawe\Desktop\cleaner\DiskCleanerPro\src\DiskCleaner.Core\obj\Debug\net8.0\DiskCleaner.Core.pdb
+C:\Users\huawe\Desktop\cleaner\DiskCleanerPro\src\DiskCleaner.Core\obj\Debug\net8.0\ref\DiskCleaner.Core.dll

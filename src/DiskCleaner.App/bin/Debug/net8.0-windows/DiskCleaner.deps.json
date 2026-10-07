@@ -1,0 +1,39 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v8.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v8.0": {
+      "DiskCleaner/1.0.0": {
+        "dependencies": {
+          "DiskCleaner.Core": "1.0.0"
+        },
+        "runtime": {
+          "DiskCleaner.dll": {}
+        }
+      },
+      "DiskCleaner.Core/1.0.0": {
+        "runtime": {
+          "DiskCleaner.Core.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "DiskCleaner/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "DiskCleaner.Core/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

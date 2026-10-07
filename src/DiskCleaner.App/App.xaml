@@ -1,0 +1,12 @@
+<Application x:Class="DiskCleaner.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="Views/MainWindow.xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <SolidColorBrush x:Key="SafeBrush" Color="#2E7D32"/>
+            <SolidColorBrush x:Key="ReviewBrush" Color="#F9A825"/>
+            <SolidColorBrush x:Key="ManualBrush" Color="#C62828"/>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

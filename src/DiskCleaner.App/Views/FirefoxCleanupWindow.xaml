@@ -1,0 +1,83 @@
+<Window x:Class="DiskCleaner.App.Views.FirefoxCleanupWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Firefox — точечная очистка данных сайтов" Height="700" Width="1180"
+        MinHeight="500" MinWidth="900" WindowStartupLocation="CenterOwner">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Заголовок, профиль, запуск анализа -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,8">
+            <TextBlock Text="Firefox: данные сайтов" FontSize="18" FontWeight="Bold" DockPanel.Dock="Left" VerticalAlignment="Center"/>
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
+                <TextBlock Text="Профиль:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                <ComboBox Width="220" Margin="0,0,12,0" ItemsSource="{Binding Profiles}"
+                          SelectedItem="{Binding SelectedProfile}" DisplayMemberPath="Name"/>
+                <Button Content="Анализ" Padding="20,6" FontWeight="Bold" Margin="0,0,8,0" Command="{Binding AnalyzeCommand}"/>
+                <Button Content="Cancel" Padding="16,6" Command="{Binding CancelCommand}"/>
+            </StackPanel>
+        </DockPanel>
+
+        <!-- Пояснения и статусы -->
+        <StackPanel Grid.Row="1" Margin="0,0,0,8">
+            <TextBlock TextWrapping="Wrap" Foreground="Gray"
+                       Text="Удаляются только выбранные данные сайтов (IndexedDB, кэш сайта, localStorage, файлы сайта). Куки, пароли, история, закладки, расширения и настройки Firefox не затрагиваются. Часть сайтов хранит состояние входа в IndexedDB/localStorage — на них вас могут попросить войти заново."/>
+            <TextBlock Text="{Binding FirefoxStateText}" FontWeight="Bold" Margin="0,4,0,0" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding StatusText}" Foreground="DarkSlateGray" Margin="0,2,0,0" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding SummaryText}" Margin="0,2,0,2" TextWrapping="Wrap"/>
+            <ProgressBar Height="4" IsIndeterminate="{Binding IsBusy, Mode=OneWay}"/>
+        </StackPanel>
+
+        <!-- Таблица данных сайтов -->
+        <Border Grid.Row="2" BorderBrush="LightGray" BorderThickness="1">
+            <ListView ItemsSource="{Binding Rows}">
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="" Width="30">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" IsEnabled="{Binding CanSelect}"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="Сайт" Width="220" DisplayMemberBinding="{Binding SiteName}"/>
+                        <GridViewColumn Header="Данные" Width="130" DisplayMemberBinding="{Binding KindTitle}"/>
+                        <GridViewColumn Header="Размер" Width="90">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding SizeDisplay}" HorizontalAlignment="Right"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="Изменён" Width="95" DisplayMemberBinding="{Binding LastModifiedDisplay}"/>
+                        <GridViewColumn Header="Риск" Width="75" DisplayMemberBinding="{Binding RiskDisplay}"/>
+                        <GridViewColumn Header="Реком." Width="60" DisplayMemberBinding="{Binding SuggestedDisplay}"/>
+                        <GridViewColumn Header="Что произойдёт после удаления" Width="560" DisplayMemberBinding="{Binding Note}"/>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+        </Border>
+
+        <!-- Панель действий -->
+        <DockPanel Grid.Row="3" Margin="0,10,0,0">
+            <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center">
+                <CheckBox Content="Тестовый прогон (dry run) — ничего не удалять" IsChecked="{Binding IsDryRun}"/>
+                <CheckBox Content="Отправлять в Корзину (место на диске освободится только после очистки Корзины)"
+                          IsChecked="{Binding UseRecycleBin}" Margin="0,4,0,0"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
+                <TextBlock Text="{Binding SelectedSizeText}" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                <Button Content="Выбрать рекомендуемые" Padding="12,6" Margin="0,0,8,0" Command="{Binding SelectSuggestedCommand}"/>
+                <Button Content="Снять выбор" Padding="12,6" Margin="0,0,10,0" Command="{Binding ClearSelectionCommand}"/>
+                <Button Content="Очистить выбранное" Padding="20,6" Command="{Binding CleanCommand}"
+                        Background="#C0392B" Foreground="White" FontWeight="Bold"/>
+            </StackPanel>
+            <Grid/>
+        </DockPanel>
+    </Grid>
+</Window>
