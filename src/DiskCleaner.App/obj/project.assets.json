@@ -1,0 +1,97 @@
+{
+  "version": 3,
+  "targets": {
+    "net8.0-windows7.0": {
+      "DiskCleaner.Core/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "compile": {
+          "bin/placeholder/DiskCleaner.Core.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/DiskCleaner.Core.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "DiskCleaner.Core/1.0.0": {
+      "type": "project",
+      "path": "../DiskCleaner.Core/DiskCleaner.Core.csproj",
+      "msbuildProject": "../DiskCleaner.Core/DiskCleaner.Core.csproj"
+    }
+  },
+  "projectFileDependencyGroups": {
+    "net8.0-windows7.0": [
+      "DiskCleaner.Core >= 1.0.0"
+    ]
+  },
+  "packageFolders": {
+    "C:\\Users\\huawe\\.nuget\\packages\\": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "C:\\Users\\huawe\\Desktop\\cleaner\\DiskCleanerPro\\src\\DiskCleaner.App\\DiskCleaner.App.csproj",
+      "projectName": "DiskCleaner",
+      "projectPath": "C:\\Users\\huawe\\Desktop\\cleaner\\DiskCleanerPro\\src\\DiskCleaner.App\\DiskCleaner.App.csproj",
+      "packagesPath": "C:\\Users\\huawe\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\huawe\\Desktop\\cleaner\\DiskCleanerPro\\src\\DiskCleaner.App\\obj\\",
+      "projectStyle": "PackageReference",
+      "configFilePaths": [
+        "C:\\Users\\huawe\\AppData\\Roaming\\NuGet\\NuGet.Config"
+      ],
+      "originalTargetFrameworks": [
+        "net8.0-windows"
+      ],
+      "sources": {
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net8.0-windows7.0": {
+          "targetAlias": "net8.0-windows",
+          "projectReferences": {
+            "C:\\Users\\huawe\\Desktop\\cleaner\\DiskCleanerPro\\src\\DiskCleaner.Core\\DiskCleaner.Core.csproj": {
+              "projectPath": "C:\\Users\\huawe\\Desktop\\cleaner\\DiskCleanerPro\\src\\DiskCleaner.Core\\DiskCleaner.Core.csproj"
+            }
+          }
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
+      }
+    },
+    "frameworks": {
+      "net8.0-windows7.0": {
+        "targetAlias": "net8.0-windows",
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48",
+          "net481"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "frameworkReferences": {
+          "Microsoft.NETCore.App": {
+            "privateAssets": "all"
+          },
+          "Microsoft.WindowsDesktop.App.WPF": {
+            "privateAssets": "none"
+          }
+        },
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.421/PortableRuntimeIdentifierGraph.json"
+      }
+    }
+  }
+}
