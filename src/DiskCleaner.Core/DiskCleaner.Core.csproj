@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>DiskCleaner.Core</RootNamespace>
+    <AssemblyName>DiskCleaner.Core</AssemblyName>
+    <!-- Ядро намеренно НЕ зависит от WPF/Windows Desktop, чтобы:
+         1) его можно было покрыть юнит-тестами на любой платформе;
+         2) UI-слой (DiskCleaner.App) оставался тонким и содержал только
+            ViewModel/View, а вся логика безопасности и сканирования жила
+            в одном проверяемом месте. -->
+  </PropertyGroup>
+
+</Project>

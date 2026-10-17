@@ -1,0 +1,35 @@
+﻿# .NET / WPF: build output
+[Bb]in/
+[Oo]bj/
+
+# IDE local data
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Test results
+[Tt]est[Rr]esults/
+
+# Publish output and artifacts
+[Pp]ublish/
+[Aa]rtifacts/
+
+# Logs, archives and NuGet packages
+*.log
+*.rar
+*.zip
+*.nupkg
+
+# Local settings inside the project
+settings.json
+settings.local.json
+appsettings.Local.json
+appsettings.*.local.json
+.env
+.env.*
+!.env.example
+!.env.template
