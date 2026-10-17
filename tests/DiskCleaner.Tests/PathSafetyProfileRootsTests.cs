@@ -92,6 +92,32 @@ public sealed class PathSafetyProfileRootsTests : IDisposable
         }
     }
 
+    [Fact]
+    public void Profile_root_checks_are_case_insensitive_on_windows()
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+
+        var nested = Make("Users", "bob", "AppData", "Local", "pip", "Cache");
+
+        foreach (var candidate in new[] { _local.ToUpperInvariant(), _local.ToLowerInvariant() })
+        {
+            var safe = _service.IsPathSafeForContentDeletion(candidate, out var reason);
+
+            Assert.False(safe, candidate);
+            Assert.Contains("корень профильной папки", reason!);
+        }
+
+        foreach (var candidate in new[] { nested.ToUpperInvariant(), nested.ToLowerInvariant(),
+                     _temp.ToUpperInvariant(), _temp.ToLowerInvariant() })
+        {
+            var safe = _service.IsPathSafeForContentDeletion(candidate, out var reason);
+
+            Assert.True(safe, reason);
+            Assert.Null(reason);
+        }
+    }
+
     // ------------------------------------------------------------------ вложенные папки — разрешены
 
     [Theory]

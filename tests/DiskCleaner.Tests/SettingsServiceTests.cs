@@ -33,6 +33,34 @@ public sealed class SettingsServiceTests
     }
 
     [Fact]
+    public void Null_lists_load_as_empty_lists_and_keep_other_values()
+    {
+        using var dir = new TempTestDirectory();
+        var file = Path.Combine(dir.Path, "settings.json");
+        File.WriteAllText(file, """
+            {
+              "ProjectFolders": null,
+              "ExcludedPaths": null,
+              "SelectedRuleNames": null,
+              "LastSelectedDrives": null,
+              "DryRunEnabled": false
+            }
+            """);
+
+        var settings = new SettingsService(file).Load();
+
+        Assert.NotNull(settings.ProjectFolders);
+        Assert.Empty(settings.ProjectFolders);
+        Assert.NotNull(settings.ExcludedPaths);
+        Assert.Empty(settings.ExcludedPaths);
+        Assert.NotNull(settings.SelectedRuleNames);
+        Assert.Empty(settings.SelectedRuleNames);
+        Assert.NotNull(settings.LastSelectedDrives);
+        Assert.Empty(settings.LastSelectedDrives);
+        Assert.False(settings.DryRunEnabled);
+    }
+
+    [Fact]
     public void Project_folders_survive_a_save_and_load_round_trip()
     {
         using var dir = new TempTestDirectory();

@@ -29,7 +29,12 @@ public sealed class SettingsService
                 return new AppSettings();
 
             var json = File.ReadAllText(_settingsFilePath);
-            return JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
+            var settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
+            settings.ProjectFolders ??= [];
+            settings.ExcludedPaths ??= [];
+            settings.SelectedRuleNames ??= [];
+            settings.LastSelectedDrives ??= [];
+            return settings;
         }
         catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
         {
