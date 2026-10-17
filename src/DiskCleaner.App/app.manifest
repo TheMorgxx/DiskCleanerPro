@@ -4,15 +4,8 @@
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
     <security>
       <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
-        <!--
-          asInvoker: программа НЕ требует прав администратора принудительно.
-          Без админских прав C:\Windows\Temp и некоторые CrashDumps будут
-          недоступны для записи/удаления — PathSafetyService/CleanupService
-          в этом случае просто пометят категорию как "нет доступа" и пропустят её,
-          без падения приложения. Если хотите чистить и системные Temp-папки —
-          запустите DiskCleaner.exe от имени администратора вручную.
-        -->
-        <requestedExecutionLevel level="asInvoker" uiAccess="false"/>
+        <!-- Администратор запускается с запросом UAC; обычный пользователь — без повышения. -->
+        <requestedExecutionLevel level="highestAvailable" uiAccess="false"/>
       </requestedPrivileges>
     </security>
   </trustInfo>

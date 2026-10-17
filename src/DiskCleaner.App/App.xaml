@@ -4,9 +4,9 @@
              StartupUri="Views/MainWindow.xaml">
     <Application.Resources>
         <ResourceDictionary>
-            <SolidColorBrush x:Key="SafeBrush" Color="#2E7D32"/>
-            <SolidColorBrush x:Key="ReviewBrush" Color="#F9A825"/>
-            <SolidColorBrush x:Key="ManualBrush" Color="#C62828"/>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/Dark.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>
 </Application>
