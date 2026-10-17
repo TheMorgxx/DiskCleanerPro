@@ -22,7 +22,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly SizeCalculator _sizeCalculator;
     private readonly ManualDeletionService _manualDeletion;
     private readonly DiskAnalyzer _diskAnalyzer;
+    private readonly PersonalContentIndex _personalIndex = new();
     private volatile string[] _excludedSnapshot = [];
+    private volatile string[] _projectSnapshot = [];
 
     private CancellationTokenSource? _currentOperationCts;
 
@@ -31,6 +33,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         var reparseGuard = new ReparsePointGuard();
         var settings = new SettingsService().Load();
         ExcludedPaths = new ObservableCollection<string>(settings.ExcludedPaths);
+        ProjectFolders = new ObservableCollection<string>(settings.ProjectFolders);
 
         var safety = new PathSafetyService(reparseGuard, () => _excludedSnapshot);
         var sizeCalculator = new SizeCalculator(reparseGuard);
@@ -49,7 +52,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
         // обращения к ObservableCollection из чужого потока.
         _excludedSnapshot = ExcludedPaths.ToArray();
         ExcludedPaths.CollectionChanged += (_, _) => _excludedSnapshot = ExcludedPaths.ToArray();
-        _manualDeletion = new ManualDeletionService(reparseGuard, ManualDeletionPaths.FromSystem(), () => _excludedSnapshot);
+        _projectSnapshot = ProjectFolders.ToArray();
+        ProjectFolders.CollectionChanged += (_, _) => _projectSnapshot = ProjectFolders.ToArray();
+        _manualDeletion = new ManualDeletionService(reparseGuard, ManualDeletionPaths.FromSystem(),
+            () => _excludedSnapshot, projectFoldersProvider: () => _projectSnapshot, personalIndex: _personalIndex);
         _diskAnalyzer = new DiskAnalyzer(reparseGuard);
 
         _isDryRun = settings.DryRunEnabled;
@@ -77,6 +83,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public ObservableCollection<DriveViewModel> Drives { get; } = [];
     public ObservableCollection<CleanupTargetViewModel> Targets { get; } = [];
     public ObservableCollection<string> ExcludedPaths { get; }
+    public ObservableCollection<string> ProjectFolders { get; }
     public ObservableCollection<string> LogLines { get; } = [];
 
     public ICollectionView TargetsView { get; private set; } = null!;
@@ -359,7 +366,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
                           ?? roots.FirstOrDefault()
                           ?? "C:\\";
 
-        return new DiskAnalysisViewModel(_diskAnalyzer, _manualDeletion, roots, defaultRoot, RecordCleanupResult, _logger.LogDirectory);
+        return new DiskAnalysisViewModel(_diskAnalyzer, _manualDeletion, roots, defaultRoot, RecordCleanupResult,
+            _logger.LogDirectory, _personalIndex, new SensitiveSummaryBuilder(_reparseGuard),
+            () => _excludedSnapshot, ExcludeAnalysisPath);
     }
 
     /// <summary>Окно «Firefox»: точечная очистка данных сайтов поверх того же ручного удаления.</summary>
@@ -382,7 +391,22 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _logger.WriteCleanupSummary(result);
     }
 
-    private void SaveCurrentSettings()
+    private bool ExcludeAnalysisPath(string path)
+    {
+        var added = !ExcludedPaths.Contains(path, StringComparer.OrdinalIgnoreCase);
+        if (added)
+            ExcludedPaths.Add(path);
+
+        if (SaveCurrentSettings())
+            return true;
+
+        // Строки скрываются только после успешной записи; не оставляем новое несохранённое исключение.
+        if (added)
+            ExcludedPaths.Remove(path);
+        return false;
+    }
+
+    public bool SaveCurrentSettings()
     {
         var settings = new AppSettings
         {
@@ -390,8 +414,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
             LastSelectedDrives = Drives.Where(d => d.IsSelected).Select(d => d.RootPath).ToList(),
             SelectedRuleNames = Targets.Where(t => t.IsSelected).Select(t => t.Model.RuleName).Distinct().ToList(),
             ExcludedPaths = ExcludedPaths.ToList(),
+            ProjectFolders = ProjectFolders.ToList(),
         };
-        _settingsService.Save(settings);
+        var saved = _settingsService.Save(settings);
+        if (!saved)
+            StatusText = "Не удалось сохранить настройки. Проверьте доступ к файлу настроек.";
+        return saved;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

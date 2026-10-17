@@ -62,11 +62,22 @@
                             <GridViewColumn Header="Изменён" Width="120" DisplayMemberBinding="{Binding LastModifiedDisplay}"/>
                             <GridViewColumn Header="Что это" Width="160" DisplayMemberBinding="{Binding Title}"/>
                             <GridViewColumn Header="Путь" Width="380" DisplayMemberBinding="{Binding Path}"/>
-                            <GridViewColumn Header="Статус" Width="300" DisplayMemberBinding="{Binding StatusText}"/>
-                            <GridViewColumn Header="" Width="90">
+                            <GridViewColumn Header="Статус" Width="300">
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Button Content="Показать" Padding="6,2" Command="{Binding ShowInExplorerCommand}"/>
+                                        <TextBlock Text="{Binding StatusText}" ToolTip="{Binding StatusText}" TextTrimming="CharacterEllipsis"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            <GridViewColumn Header="" Width="190">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="Показать" Padding="6,2" Margin="0,0,6,0" Command="{Binding ShowInExplorerCommand}"/>
+                                            <Button Content="Не предлагать" Padding="6,2"
+                                                    Command="{Binding DataContext.ExcludePathCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                                                    CommandParameter="{Binding Path}"/>
+                                        </StackPanel>
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
@@ -95,11 +106,22 @@
                             <GridViewColumn Header="Изменён" Width="120" DisplayMemberBinding="{Binding LastModifiedDisplay}"/>
                             <GridViewColumn Header="Что это" Width="160" DisplayMemberBinding="{Binding Title}"/>
                             <GridViewColumn Header="Путь" Width="380" DisplayMemberBinding="{Binding Path}"/>
-                            <GridViewColumn Header="Статус" Width="300" DisplayMemberBinding="{Binding StatusText}"/>
-                            <GridViewColumn Header="" Width="90">
+                            <GridViewColumn Header="Статус" Width="300">
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Button Content="Показать" Padding="6,2" Command="{Binding ShowInExplorerCommand}"/>
+                                        <TextBlock Text="{Binding StatusText}" ToolTip="{Binding StatusText}" TextTrimming="CharacterEllipsis"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            <GridViewColumn Header="" Width="190">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="Показать" Padding="6,2" Margin="0,0,6,0" Command="{Binding ShowInExplorerCommand}"/>
+                                            <Button Content="Не предлагать" Padding="6,2"
+                                                    Command="{Binding DataContext.ExcludePathCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                                                    CommandParameter="{Binding Path}"/>
+                                        </StackPanel>
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
@@ -128,11 +150,22 @@
                             <GridViewColumn Header="Изменён" Width="120" DisplayMemberBinding="{Binding LastModifiedDisplay}"/>
                             <GridViewColumn Header="Что это" Width="160" DisplayMemberBinding="{Binding Title}"/>
                             <GridViewColumn Header="Путь" Width="380" DisplayMemberBinding="{Binding Path}"/>
-                            <GridViewColumn Header="Статус" Width="300" DisplayMemberBinding="{Binding StatusText}"/>
-                            <GridViewColumn Header="" Width="90">
+                            <GridViewColumn Header="Статус" Width="300">
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Button Content="Показать" Padding="6,2" Command="{Binding ShowInExplorerCommand}"/>
+                                        <TextBlock Text="{Binding StatusText}" ToolTip="{Binding StatusText}" TextTrimming="CharacterEllipsis"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            <GridViewColumn Header="" Width="190">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="Показать" Padding="6,2" Margin="0,0,6,0" Command="{Binding ShowInExplorerCommand}"/>
+                                            <Button Content="Не предлагать" Padding="6,2"
+                                                    Command="{Binding DataContext.ExcludePathCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                                                    CommandParameter="{Binding Path}"/>
+                                        </StackPanel>
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
@@ -161,11 +194,22 @@
                             <GridViewColumn Header="Изменён" Width="120" DisplayMemberBinding="{Binding LastModifiedDisplay}"/>
                             <GridViewColumn Header="Что это" Width="160" DisplayMemberBinding="{Binding Title}"/>
                             <GridViewColumn Header="Путь" Width="380" DisplayMemberBinding="{Binding Path}"/>
-                            <GridViewColumn Header="Статус" Width="300" DisplayMemberBinding="{Binding StatusText}"/>
-                            <GridViewColumn Header="" Width="90">
+                            <GridViewColumn Header="Статус" Width="300">
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Button Content="Показать" Padding="6,2" Command="{Binding ShowInExplorerCommand}"/>
+                                        <TextBlock Text="{Binding StatusText}" ToolTip="{Binding StatusText}" TextTrimming="CharacterEllipsis"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            <GridViewColumn Header="" Width="190">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="Показать" Padding="6,2" Margin="0,0,6,0" Command="{Binding ShowInExplorerCommand}"/>
+                                            <Button Content="Не предлагать" Padding="6,2"
+                                                    Command="{Binding DataContext.ExcludePathCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                                                    CommandParameter="{Binding Path}"/>
+                                        </StackPanel>
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>

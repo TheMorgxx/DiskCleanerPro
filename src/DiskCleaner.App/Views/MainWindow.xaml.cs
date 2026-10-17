@@ -39,8 +39,12 @@ public partial class MainWindow : Window
 
     private void ShowSettingsDialog()
     {
-        var window = new SettingsWindow(_viewModel.ExcludedPaths) { Owner = this };
+        var window = new SettingsWindow(_viewModel.ExcludedPaths, _viewModel.ProjectFolders) { Owner = this };
         window.ShowDialog();
+        if (!_viewModel.SaveCurrentSettings())
+            MessageBox.Show(this, "Не удалось сохранить настройки. Изменения действуют только в текущем сеансе; " +
+                "проверьте доступ к файлу настроек и повторите сохранение, закрыв окно «Настройки» ещё раз.",
+                "Настройки", MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
     private void ShowLogsDialog()

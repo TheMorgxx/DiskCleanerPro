@@ -63,6 +63,16 @@ public static class UiNames
 
     public static string SkipReasonName(SkipReason reason) =>
         SkipReasons.TryGetValue(reason, out var name) ? name : reason.ToString();
+
+    public static string DriveTypeName(string? type) => type switch
+    {
+        "Fixed" => "Локальный",
+        "Removable" => "Съёмный",
+        "Network" => "Сетевой",
+        "CDRom" => "Оптический",
+        "Ram" => "RAM-диск",
+        _ => "Неизвестно",
+    };
 }
 
 /// <summary>Причина пропуска (SkipReason) → русское название. Общий для ResultsWindow и окна пропущенных элементов.</summary>

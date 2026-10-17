@@ -17,7 +17,10 @@ public sealed class AnalysisRowViewModel : ObservableObject
         bool isDirectory,
         DateTime? lastModifiedUtc,
         DeletionVerdict verdict,
-        string? hint)
+        string? hint,
+        bool regenerates = false,
+        string? groupDescription = null,
+        bool contentUnchecked = false)
     {
         Source = source;
         Title = title;
@@ -27,6 +30,9 @@ public sealed class AnalysisRowViewModel : ObservableObject
         LastModifiedUtc = lastModifiedUtc;
         Verdict = verdict;
         Hint = hint;
+        Regenerates = regenerates;
+        GroupDescription = groupDescription;
+        ContentUnchecked = contentUnchecked;
 
         ShowInExplorerCommand = new RelayCommand(ShowInExplorer);
     }
@@ -39,12 +45,15 @@ public sealed class AnalysisRowViewModel : ObservableObject
     public DateTime? LastModifiedUtc { get; }
     public DeletionVerdict Verdict { get; }
     public string? Hint { get; }
+    public bool Regenerates { get; }
+    public string? GroupDescription { get; }
+    public bool ContentUnchecked { get; }
 
     public string SizeDisplay => CleanupTarget.FormatSize(SizeBytes);
     public string LastModifiedDisplay => LastModifiedUtc?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "—";
 
     /// <summary>Можно выбрать галочкой: путь не заблокирован правилами безопасности.</summary>
-    public bool CanSelect => Verdict.IsAllowed;
+    public bool CanSelect => Verdict.IsAllowed && !ContentUnchecked;
 
     public bool RequiresConfirmation => Verdict.RequiresConfirmation;
 
@@ -63,11 +72,17 @@ public sealed class AnalysisRowViewModel : ObservableObject
     {
         get
         {
+            if (ContentUnchecked)
+                return "Анализ был прерван: содержимое папки не проверено";
             if (!Verdict.IsAllowed)
                 return $"Нельзя удалить: {Verdict.BlockReason}";
             if (Verdict.RequiresConfirmation)
                 return $"Нужно подтверждение: {Verdict.SensitivityNote}";
-            return string.IsNullOrWhiteSpace(Hint) ? "Можно удалить" : Hint!;
+            if (!string.IsNullOrWhiteSpace(GroupDescription))
+                return GroupDescription!;
+            if (Regenerates)
+                return string.IsNullOrWhiteSpace(Hint) ? "Пересоздаётся" : $"Пересоздаётся: {Hint}";
+            return "Не защищено — проверьте перед удалением";
         }
     }
 

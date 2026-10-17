@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using DiskCleaner.App.Localization;
 using DiskCleaner.Core.Models;
 
 namespace DiskCleaner.App.ViewModels;
@@ -33,7 +34,7 @@ public sealed class DriveViewModel : INotifyPropertyChanged
     public string UsedDisplay => Model.UsedDisplay;
     public string FreeDisplay => Model.FreeDisplay;
     public string? FileSystem => Model.FileSystem;
-    public string DriveTypeDisplay => Model.DriveTypeDisplay;
+    public string DriveTypeDisplay => UiNames.DriveTypeName(Model.DriveTypeDisplay);
     public bool IsSystemDrive => Model.IsSystemDrive;
     public double UsedFraction => Model.UsedFraction;
 

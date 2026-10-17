@@ -15,7 +15,7 @@ public partial class DiskAnalysisWindow : Window
 
         _viewModel = viewModel;
         _viewModel.ConfirmDeletion = ShowConfirmationDialog;
-        _viewModel.ConfirmSensitive = ShowConfirmationDialog;
+        _viewModel.ConfirmSensitive = ShowSensitiveConfirmationDialog;
         _viewModel.ShowResults = ShowResultsDialog;
         _viewModel.CopyToClipboard = CopyTextToClipboard;
         DataContext = _viewModel;
@@ -34,6 +34,12 @@ public partial class DiskAnalysisWindow : Window
     {
         var window = new ResultsWindow(new CleanupResultViewModel(result)) { Owner = this };
         window.Show();
+    }
+
+    private bool ShowSensitiveConfirmationDialog(string message, string? requiredWord)
+    {
+        var dialog = new ConfirmationWindow(message, requiredWord) { Owner = this };
+        return dialog.ShowDialog() == true;
     }
 
     private static bool CopyTextToClipboard(string text)

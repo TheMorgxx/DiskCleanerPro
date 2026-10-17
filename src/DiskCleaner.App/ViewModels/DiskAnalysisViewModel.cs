@@ -21,9 +21,14 @@ public sealed class DiskAnalysisViewModel : ObservableObject
     private readonly Action<CleanupResult> _recordResult;
     private readonly string _reportDirectory;
     private readonly DiskAnalysisOptions? _analysisOptions;
+    private readonly PersonalContentIndex _personalIndex;
+    private readonly SensitiveSummaryBuilder _summaryBuilder;
+    private readonly Func<IEnumerable<string>> _excludedPathsProvider;
+    private readonly Func<string, bool> _excludePath;
 
     private CancellationTokenSource? _cts;
     private DiskAnalysisResult? _lastResult;
+    private bool _isShuttingDown;
 
     public DiskAnalysisViewModel(
         DiskAnalyzer analyzer,
@@ -32,6 +37,10 @@ public sealed class DiskAnalysisViewModel : ObservableObject
         string defaultRoot,
         Action<CleanupResult> recordResult,
         string reportDirectory,
+        PersonalContentIndex personalIndex,
+        SensitiveSummaryBuilder summaryBuilder,
+        Func<IEnumerable<string>> excludedPathsProvider,
+        Func<string, bool> excludePath,
         DiskAnalysisOptions? analysisOptions = null)
     {
         _analyzer = analyzer ?? throw new ArgumentNullException(nameof(analyzer));
@@ -39,6 +48,10 @@ public sealed class DiskAnalysisViewModel : ObservableObject
         _recordResult = recordResult ?? throw new ArgumentNullException(nameof(recordResult));
         _reportDirectory = reportDirectory;
         _analysisOptions = analysisOptions;
+        _personalIndex = personalIndex ?? throw new ArgumentNullException(nameof(personalIndex));
+        _summaryBuilder = summaryBuilder ?? throw new ArgumentNullException(nameof(summaryBuilder));
+        _excludedPathsProvider = excludedPathsProvider ?? throw new ArgumentNullException(nameof(excludedPathsProvider));
+        _excludePath = excludePath ?? throw new ArgumentNullException(nameof(excludePath));
 
         foreach (var root in roots)
             Roots.Add(root);
@@ -52,6 +65,9 @@ public sealed class DiskAnalysisViewModel : ObservableObject
         ClearSelectionCommand = new RelayCommand(ClearSelection);
         CopyReportCommand = new RelayCommand(CopyReport, () => _lastResult is not null);
         SaveReportCommand = new RelayCommand(SaveReport, () => _lastResult is not null);
+        ExcludePathCommand = new RelayCommand(
+            parameter => ExcludePath(parameter as string),
+            parameter => !IsBusy && parameter is string path && !string.IsNullOrWhiteSpace(path));
     }
 
     // --- Данные для UI ---
@@ -64,7 +80,7 @@ public sealed class DiskAnalysisViewModel : ObservableObject
 
     // --- Колбэки из окна (code-behind) ---
     public Func<string, bool>? ConfirmDeletion { get; set; }
-    public Func<string, bool>? ConfirmSensitive { get; set; }
+    public Func<string, string?, bool>? ConfirmSensitive { get; set; }
     public Action<CleanupResult>? ShowResults { get; set; }
     public Func<string, bool>? CopyToClipboard { get; set; }
 
@@ -75,6 +91,7 @@ public sealed class DiskAnalysisViewModel : ObservableObject
     public ICommand ClearSelectionCommand { get; }
     public ICommand CopyReportCommand { get; }
     public ICommand SaveReportCommand { get; }
+    public ICommand ExcludePathCommand { get; }
 
     // --- Состояние ---
     private string _selectedRoot;
@@ -167,13 +184,19 @@ public sealed class DiskAnalysisViewModel : ObservableObject
                 ProgressText = $"Файлов: {p.FilesScanned:N0} • папок: {p.DirectoriesScanned:N0} • {p.CurrentPath}");
 
             var result = await _analyzer.AnalyzeAsync(SelectedRoot, _analysisOptions, progress, token);
+            // Частичный результат тоже заменяет снимок этого корня до проверки строк через Evaluate.
+            _personalIndex.ReplaceForRoot(result.RootPath, result.PersonalFolders);
             var rows = await Task.Run(() => BuildRows(result), CancellationToken.None);
+
+            if (_isShuttingDown)
+                return;
 
             _lastResult = result;
             Fill(KnownPlaceRows, rows.KnownPlaces);
             Fill(DirectoryRows, rows.Directories);
             Fill(FileRows, rows.Files);
             Fill(SuspectRows, rows.Suspects);
+            RemoveExcludedRows();
             foreach (var ext in result.TopExtensions)
                 Extensions.Add(ext);
 
@@ -196,6 +219,7 @@ public sealed class DiskAnalysisViewModel : ObservableObject
         {
             ProgressText = "";
             IsBusy = false;
+            _cts?.Dispose();
             _cts = null;
             RefreshCommands();
         }
@@ -210,14 +234,76 @@ public sealed class DiskAnalysisViewModel : ObservableObject
     /// <summary>Строит строки и проверяет каждый путь правилами безопасности (выполняется не в потоке UI).</summary>
     private RowSet BuildRows(DiskAnalysisResult r)
     {
-        AnalysisRowViewModel Row(string source, string title, string path, long size, bool isDir, DateTime? modified, string? hint)
-            => new(source, title, path, size, isDir, modified, _deletion.Evaluate(path), hint);
+        // Снимок именно этого анализа: другой открытый анализ не снимает блокировку частичных строк.
+        var indexedFolders = r.PersonalFolders.Select(f => f.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var excludedPaths = ReadExcludedPaths();
+        bool IsVisible(string path) => !excludedPaths.Any(excluded => IsUnderOrEqual(excluded, path));
+
+        AnalysisRowViewModel Row(string source, string title, string path, long size, bool isDir,
+            DateTime? modified, string? hint, bool regenerates = false, string? groupDescription = null)
+            => new(source, title, path, size, isDir, modified, _deletion.Evaluate(path), hint,
+                regenerates, groupDescription,
+                contentUnchecked: r.WasCancelled && isDir && !indexedFolders.Contains(path));
 
         return new RowSet(
-            r.KnownPlaces.Select(k => Row("Известное место", k.Label, k.Path, k.SizeBytes, true, k.LastModifiedUtc, k.Hint)).ToList(),
-            r.HeaviestDirectories.Select(d => Row("Папка", LeafName(d.Path), d.Path, d.SizeBytes, true, d.LastModifiedUtc, null)).ToList(),
-            r.HeaviestFiles.Select(f => Row("Файл", LeafName(f.Path), f.Path, f.SizeBytes, false, f.LastModifiedUtc, null)).ToList(),
-            r.SuspectGroups.SelectMany(g => g.Items.Select(i => Row(g.Name, g.Name, i.Path, i.SizeBytes, true, i.LastModifiedUtc, null))).ToList());
+            r.KnownPlaces.Where(k => IsVisible(k.Path))
+                .Select(k => Row("Известное место", k.Label, k.Path, k.SizeBytes, true, k.LastModifiedUtc, k.Hint, k.Regenerates)).ToList(),
+            r.HeaviestDirectories.Where(d => IsVisible(d.Path))
+                .Select(d => Row("Папка", LeafName(d.Path), d.Path, d.SizeBytes, true, d.LastModifiedUtc, null)).ToList(),
+            r.HeaviestFiles.Where(f => IsVisible(f.Path))
+                .Select(f => Row("Файл", LeafName(f.Path), f.Path, f.SizeBytes, false, f.LastModifiedUtc, null)).ToList(),
+            r.SuspectGroups.SelectMany(g => g.Items.Where(i => IsVisible(i.Path))
+                .Select(i => Row(g.Name, g.Name, i.Path, i.SizeBytes, true, i.LastModifiedUtc, null,
+                    groupDescription: g.Description))).ToList());
+    }
+
+    private void ExcludePath(string? path)
+    {
+        if (IsBusy || string.IsNullOrWhiteSpace(path))
+            return;
+
+        if (!_excludePath(path))
+        {
+            StatusText = "Не удалось сохранить исключение. Строки не скрыты; проверьте доступ к файлу настроек.";
+            return;
+        }
+
+        RemoveExcludedRows();
+        RecalculateSelection();
+        StatusText = $"Путь больше не предлагается: {path}. Отменить можно в окне «Настройки».";
+    }
+
+    private string[] ReadExcludedPaths()
+    {
+        var paths = new List<string>();
+        foreach (var path in _excludedPathsProvider())
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                continue;
+            try
+            {
+                paths.Add(Path.GetFullPath(path));
+            }
+            catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+            {
+                // Как и в Core, некорректная запись настроек не является исключённым путём.
+            }
+        }
+        return paths.ToArray();
+    }
+
+    private void RemoveExcludedRows()
+    {
+        var paths = ReadExcludedPaths();
+        foreach (var collection in AllRowCollections())
+        {
+            var excludedRows = collection.Where(row => paths.Any(path => IsUnderOrEqual(path, row.Path))).ToList();
+            foreach (var row in excludedRows)
+            {
+                row.PropertyChanged -= OnRowPropertyChanged;
+                collection.Remove(row);
+            }
+        }
     }
 
     private void Fill(ObservableCollection<AnalysisRowViewModel> target, IEnumerable<AnalysisRowViewModel> rows)
@@ -317,6 +403,9 @@ public sealed class DiskAnalysisViewModel : ObservableObject
 
     private async Task DeleteSelectedAsync()
     {
+        if (IsBusy || _isShuttingDown)
+            return;
+
         var selection = GetTopLevelSelection();
         if (selection.Count == 0)
             return;
@@ -333,37 +422,60 @@ public sealed class DiskAnalysisViewModel : ObservableObject
         }
 
         var sensitive = allowed.Where(c => c.Verdict.RequiresConfirmation).ToList();
-        var confirmedSensitive = true; // в пробном прогоне ничего не удаляется — подтверждения не нужны
-
-        if (!IsDryRun)
-        {
-            var message = BuildConfirmationMessage(allowed.Select(c => c.Row).ToList(), blockedCount);
-            if (!(ConfirmDeletion?.Invoke(message) ?? false))
-            {
-                StatusText = "Удаление отменено пользователем.";
-                return;
-            }
-
-            // Отказ во втором подтверждении не отменяет всё: чувствительные пути просто будут пропущены сервисом.
-            confirmedSensitive = sensitive.Count == 0 ||
-                                 (ConfirmSensitive?.Invoke(BuildSensitiveMessage(sensitive)) ?? false);
-        }
-
-        var options = new ManualDeletionOptions
-        {
-            DryRun = IsDryRun,
-            UseRecycleBin = UseRecycleBin,
-            ConfirmedSensitive = confirmedSensitive,
-        };
-        var paths = allowed.Select(c => c.Row.Path).ToList();
-
+        // Режим фиксируется до await: переключение флажков во время подсчёта не меняет эту операцию.
+        var dryRun = IsDryRun;
+        var useRecycleBin = UseRecycleBin;
         _cts = new CancellationTokenSource();
         var token = _cts.Token;
         IsBusy = true;
-        StatusText = IsDryRun ? "Пробный прогон..." : "Удаляю...";
 
         try
         {
+            var confirmedSensitive = true; // в пробном прогоне ничего не удаляется — подтверждения не нужны
+            if (!dryRun)
+            {
+                var message = BuildConfirmationMessage(allowed.Select(c => c.Row).ToList(), blockedCount, useRecycleBin);
+                if (!(ConfirmDeletion?.Invoke(message) ?? false))
+                {
+                    StatusText = "Удаление отменено пользователем.";
+                    return;
+                }
+                token.ThrowIfCancellationRequested();
+
+                if (sensitive.Count > 0)
+                {
+                    // GetTopLevelSelection уже убрал дубли и вложенные выбранные пути.
+                    var personalPaths = sensitive
+                        .Where(c => c.Verdict.Sensitivity is DeletionSensitivity.PersonalFiles or DeletionSensitivity.PersonalData)
+                        .Select(c => c.Row.Path).ToList();
+                    SensitiveSummary? summary = null;
+                    if (personalPaths.Count > 0)
+                    {
+                        StatusText = "считаю…";
+                        ProgressText = "Сводка по всем файлам в выбранных личных путях. Подсчёт можно отменить.";
+                        summary = await Task.Run(() => _summaryBuilder.Build(personalPaths, cancellationToken: token), token);
+                        ProgressText = "";
+                    }
+                    token.ThrowIfCancellationRequested();
+
+                    var requiredWord = summary is not null && summary.TotalBytes >= PersonalDataRules.TypedConfirmationBytes
+                        ? PersonalDataRules.ConfirmWord
+                        : null;
+                    StatusText = "Ожидаю подтверждения удаления чувствительных данных.";
+                    // Отказ во втором подтверждении сохраняет прежнее поведение: чувствительные пути пропускаются.
+                    confirmedSensitive = ConfirmSensitive?.Invoke(BuildSensitiveMessage(sensitive, summary), requiredWord) ?? false;
+                    token.ThrowIfCancellationRequested();
+                }
+            }
+
+            var options = new ManualDeletionOptions
+            {
+                DryRun = dryRun,
+                UseRecycleBin = useRecycleBin,
+                ConfirmedSensitive = confirmedSensitive,
+            };
+            var paths = allowed.Select(c => c.Row.Path).ToList();
+            StatusText = dryRun ? "Пробный прогон..." : "Удаляю...";
             var progress = new Progress<string>(msg => StatusText = msg);
             var result = await Task.Run(() => _deletion.Delete(paths, options, progress, token), token);
 
@@ -372,13 +484,14 @@ public sealed class DiskAnalysisViewModel : ObservableObject
             var recycleNote = options.UseRecycleBin && !options.DryRun
                 ? " Файлы в Корзине: место освободится после её очистки."
                 : "";
-            StatusText = IsDryRun
+            StatusText = dryRun
                 ? $"Пробный прогон завершён. Освободилось бы: {result.TotalFreedDisplay}."
                 : $"Готово. Освобождено: {result.TotalFreedDisplay}.{recycleNote}";
 
-            ShowResults?.Invoke(result);
+            if (!_isShuttingDown)
+                ShowResults?.Invoke(result);
 
-            if (!IsDryRun)
+            if (!dryRun)
                 PruneMissingRows();
         }
         catch (OperationCanceledException)
@@ -391,7 +504,9 @@ public sealed class DiskAnalysisViewModel : ObservableObject
         }
         finally
         {
+            ProgressText = "";
             IsBusy = false;
+            _cts?.Dispose();
             _cts = null;
             RecalculateSelection();
         }
@@ -411,10 +526,10 @@ public sealed class DiskAnalysisViewModel : ObservableObject
         }
     }
 
-    private string BuildConfirmationMessage(IReadOnlyList<AnalysisRowViewModel> items, int blockedCount)
+    private static string BuildConfirmationMessage(IReadOnlyList<AnalysisRowViewModel> items, int blockedCount, bool useRecycleBin)
     {
         var total = CleanupTarget.FormatSize(items.Sum(r => r.SizeBytes));
-        var how = UseRecycleBin
+        var how = useRecycleBin
             ? "будут отправлены в Корзину (место на диске освободится только после очистки Корзины)"
             : "будут удалены БЕЗВОЗВРАТНО";
 
@@ -431,15 +546,37 @@ public sealed class DiskAnalysisViewModel : ObservableObject
         return sb.ToString();
     }
 
-    private static string BuildSensitiveMessage(IReadOnlyList<(AnalysisRowViewModel Row, DeletionVerdict Verdict)> sensitive)
+    private static string BuildSensitiveMessage(
+        IReadOnlyList<(AnalysisRowViewModel Row, DeletionVerdict Verdict)> sensitive,
+        SensitiveSummary? summary)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("ВНИМАНИЕ: среди выбранного есть личные файлы или данные профиля браузера:");
+        sb.AppendLine("ВНИМАНИЕ: среди выбранного есть личные данные, содержимое папок проектов или данные профиля браузера:");
         sb.AppendLine();
         foreach (var (row, verdict) in sensitive.Take(MaxListedInConfirmation))
             sb.AppendLine($"• {row.SizeDisplay,10}  {row.Path}\n    ({verdict.SensitivityNote})");
         if (sensitive.Count > MaxListedInConfirmation)
             sb.AppendLine($"… и ещё {sensitive.Count - MaxListedInConfirmation}");
+
+        if (summary is not null)
+        {
+            sb.AppendLine().AppendLine("Сводка по всем файлам под выбранными личными путями:");
+            sb.AppendLine($"Файлов: {summary.FileCount:N0}");
+            sb.AppendLine($"Суммарный размер: {CleanupTarget.FormatSize(summary.TotalBytes)} ({summary.TotalBytes:N0} байт)");
+            if (summary.OldestModifiedUtc is { } oldest && summary.NewestModifiedUtc is { } newest)
+                sb.AppendLine($"Даты изменения: {oldest.ToLocalTime():yyyy-MM-dd HH:mm} — {newest.ToLocalTime():yyyy-MM-dd HH:mm}");
+            else
+                sb.AppendLine("Даты изменения: нет данных.");
+
+            if (summary.LargestFiles.Count > 0)
+            {
+                sb.AppendLine("Самые большие файлы (до 5):");
+                foreach (var file in summary.LargestFiles)
+                    sb.AppendLine($"• {CleanupTarget.FormatSize(file.SizeBytes),10}  {file.Path}");
+            }
+            if (summary.UnreadableCount > 0)
+                sb.AppendLine($"Не удалось прочитать элементов: {summary.UnreadableCount:N0}. Сводка неполная.");
+        }
         sb.AppendLine().AppendLine("«Удалить» — удалить и их тоже.");
         sb.Append("«Отмена» — удалить только остальное, эти пути будут пропущены.");
         return sb.ToString();
@@ -485,7 +622,11 @@ public sealed class DiskAnalysisViewModel : ObservableObject
     }
 
     /// <summary>Вызывается при закрытии окна: останавливает фоновую операцию.</summary>
-    public void Shutdown() => _cts?.Cancel();
+    public void Shutdown()
+    {
+        _isShuttingDown = true;
+        _cts?.Cancel();
+    }
 
     private void RefreshCommands()
     {
@@ -494,6 +635,7 @@ public sealed class DiskAnalysisViewModel : ObservableObject
         (DeleteSelectedCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         (CopyReportCommand as RelayCommand)?.RaiseCanExecuteChanged();
         (SaveReportCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        (ExcludePathCommand as RelayCommand)?.RaiseCanExecuteChanged();
     }
 
     private static string LeafName(string path)
