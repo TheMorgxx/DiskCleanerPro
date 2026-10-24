@@ -1,0 +1,53 @@
+# Fallback: builds and publishes a Release on GitHub's own Windows runner.
+# Use it when 2_publish_release.bat cannot run on your PC:
+# GitHub -> Actions -> "Release (manual)" -> Run workflow -> enter a tag such as v1.0.0.
+name: Release (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag, for example v1.0.0'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build, test, publish and release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:RELEASE_TAG -notmatch '^[vV]?[0-9]+\.[0-9]+\.[0-9]+([-+.][0-9A-Za-z.-]+)?$') { throw "Bad tag: $env:RELEASE_TAG" }
+          $version = $env:RELEASE_TAG.TrimStart('v', 'V')
+
+          dotnet build DiskCleaner.sln -c Release "-p:Version=$version"
+          if ($LASTEXITCODE -ne 0) { throw 'build failed' }
+          dotnet test DiskCleaner.sln -c Release --no-build
+          if ($LASTEXITCODE -ne 0) { throw 'tests failed' }
+          dotnet publish src/DiskCleaner.App/DiskCleaner.App.csproj -c Release -r win-x64 --self-contained true `
+            -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=false -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false "-p:Version=$version" -o publish
+          if ($LASTEXITCODE -ne 0) { throw 'publish failed' }
+
+          $hash = (Get-FileHash publish/DiskCleaner.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  DiskCleaner.exe" | Out-File -Encoding ascii publish/DiskCleaner.exe.sha256
+          $notes = "Standalone Windows x64 build (.NET runtime included).`nBuilt from commit $env:GITHUB_SHA.`nSHA-256: ``$hash``"
+
+          $extra = @()
+          if ($version.Contains('-')) { $extra += '--prerelease' }
+          gh release create $env:RELEASE_TAG publish/DiskCleaner.exe publish/DiskCleaner.exe.sha256 `
+            --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "DiskCleanerPro $env:RELEASE_TAG" --notes $notes @extra
+          if ($LASTEXITCODE -ne 0) { throw 'gh release create failed' }

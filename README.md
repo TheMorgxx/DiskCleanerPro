@@ -4,6 +4,10 @@
 очистки кэшей и временных файлов на **всех** локальных дисках Windows (не
 только C:), с сильной защитой от удаления важных данных.
 
+Готовую сборку (один `DiskCleaner.exe`, .NET ставить не нужно) можно скачать на странице
+[Releases](https://github.com/TheMorgxx/DiskCleanerPro/releases). Версия приложения задаётся в
+`Directory.Build.props` (по умолчанию `1.0.0`), а при выпуске релиза берётся из тега.
+
 ## Структура решения
 
 ```
@@ -11,31 +15,46 @@ DiskCleaner.sln
 ├── src/
 │   ├── DiskCleaner.Core/        — вся бизнес-логика, БЕЗ зависимости от WPF/Windows Desktop.
 │   │                              Собирается и тестируется на любой платформе (net8.0).
-│   │   ├── Models/              — CleanupRule, CleanupTarget, CleanupCategory, CleanupRiskLevel,
-│   │   │                          CleanupResult, CleanupLogEntry, ScanResult, SkippedItem,
-│   │   │                          DriveInfoModel, AppSettings.
+│   │   ├── Models/              — правила и результаты очистки (CleanupRule, CleanupTarget, CleanupResult,
+│   │   │                          CleanupLogEntry, ScanResult, SkippedItem, DriveInfoModel), настройки (AppSettings),
+│   │   │                          анализ диска (DiskAnalysisOptions/Result), ручное удаление (ManualDeletionModels),
+│   │   │                          защита личных данных (PersonalDataModels), Firefox (FirefoxModels).
 │   │   └── Services/
 │   │       ├── PathSafetyService.cs         — ЕДИНСТВЕННАЯ точка "можно ли трогать путь".
 │   │       ├── ReparsePointGuard.cs         — защита от symlink/junction.
-│   │       ├── DriveScanner.cs              — список дисков для первого экрана.
-│   │       ├── DiskUsageScanner.cs          — размеры/ФС/тип конкретного диска.
+│   │       ├── DriveScanner.cs / DiskUsageScanner.cs — список дисков и данные по конкретному диску.
 │   │       ├── CleanupRuleProvider.cs       — каталог whitelist-правил + разворачивание в реальные пути.
+│   │       ├── WindowsSystemCleanupService.cs / AppCacheDetector.cs / BrowserCacheDetector.cs — каталоги правил.
 │   │       ├── SizeCalculator.cs            — подсчёт размера без захода в reparse points.
-│   │       ├── CleanupService.cs            — собственно удаление содержимого.
-│   │       ├── WindowsSystemCleanupService.cs — правила системных категорий (TEMP, thumbnails, Update cache...).
-│   │       ├── AppCacheDetector.cs          — правила кэшей инструментов разработки/приложений.
-│   │       ├── BrowserCacheDetector.cs      — правила кэшей известных браузеров.
+│   │       ├── CleanupService.cs            — удаление содержимого найденных категорий.
+│   │       ├── DiskAnalyzer.cs              — «Что занимает место»: тяжёлые папки/файлы, папки-пожиратели.
+│   │       ├── BuildArtifactCatalog.cs      — подписи групп node_modules, target, venv и т.п.
+│   │       ├── ManualDeletionService.cs     — ручное удаление выбранного (исключения, dry-run, Корзина, повторная проверка).
+│   │       ├── IRecycleBinMover.cs          — отправка в Корзину (интерфейс + реализация для Windows).
+│   │       ├── PersonalContentIndex.cs / PersonalDataClassifier.cs / PersonalDataRules.cs /
+│   │       │   SensitiveSummaryBuilder.cs   — защита личных данных: индекс, классификация, сводка перед удалением.
+│   │       ├── DiskAnalysisReportFormatter.cs — текстовый отчёт анализа.
+│   │       ├── FirefoxProfileLocator.cs / FirefoxSiteStorageAnalyzer.cs / FirefoxSiteCleanupService.cs — модуль Firefox.
 │   │       ├── AdminRightsChecker.cs        — определение прав администратора.
 │   │       ├── Logger.cs                    — журнал в %LOCALAPPDATA%\DiskCleaner\logs.
 │   │       └── SettingsService.cs           — настройки в %LOCALAPPDATA%\DiskCleaner\settings.json.
 │   └── DiskCleaner.App/         — WPF-приложение (net8.0-windows), тонкий UI-слой поверх Core.
-│       ├── Views/                MainWindow, ConfirmationWindow, ResultsWindow, SettingsWindow, LogsWindow.
-│       ├── ViewModels/            MainViewModel, DriveViewModel, CleanupTargetViewModel,
-│       │                          CleanupResultViewModel, RelayCommand, AsyncRelayCommand.
+│       ├── Views/                MainWindow, ConfirmationWindow, ResultsWindow, SettingsWindow, LogsWindow,
+│       │                          DiskAnalysisWindow, FirefoxCleanupWindow, SkippedItemsWindow.
+│       ├── ViewModels/            MainViewModel, DiskAnalysisViewModel, FirefoxCleanupViewModel, DriveViewModel,
+│       │                          CleanupTargetViewModel, CleanupResultViewModel, AnalysisRowViewModel и вспомогательные.
+│       ├── Themes/                Dark.xaml (единая тёмная тема), DarkWindowChrome.cs (тёмная рамка окон).
+│       ├── Localization/          UiNames.cs — русские подписи категорий и уровней риска.
+│       ├── Services/              CrashReporter.cs — запись необработанных исключений в crash-лог.
 │       └── app.manifest           requestedExecutionLevel="highestAvailable" — запрос UAC для администратора.
-└── tests/
-    └── DiskCleaner.Tests/       — xUnit-тесты для PathSafetyService, ReparsePointGuard,
-                                    CleanupService, SizeCalculator, dry-run.
+├── tests/
+│   └── DiskCleaner.Tests/       — xunit-тесты (около 300) для безопасности путей, очистки, анализа диска,
+│                                  ручного удаления, защиты личных данных, Firefox, настроек.
+├── tools/                       — скрипты публикации на GitHub (используются батниками ниже).
+├── .github/workflows/release.yml — запасной способ выпустить релиз на серверах GitHub.
+├── build.bat                    — сборка и тесты одной кнопкой.
+├── 1_publish_github.bat         — выложить исходники на GitHub.
+└── 2_publish_release.bat        — собрать DiskCleaner.exe и опубликовать релиз на GitHub.
 ```
 
 ## Сборка и запуск
@@ -53,6 +72,8 @@ dotnet run --project src\DiskCleaner.App
 ```powershell
 dotnet test tests\DiskCleaner.Tests
 ```
+
+Всё сразу (restore, сборка Release, тесты) делает `build.bat`; с параметром `notest` тесты пропускаются.
 
 При запуске учётной записью администратора приложение запрашивает UAC
 (`highestAvailable`); после подтверждения категории, требующие повышенных прав
@@ -205,8 +226,38 @@ Review и Manual — никогда, пользователь должен са�
 остальные выбранные разрешённые пути обрабатываются. Тестовый прогон не требует подтверждений
 и ничего не удаляет.
 
+## Firefox: точечная очистка данных сайтов
+
+Кнопка **«Firefox»** открывает отдельное окно. Приложение находит профили через `profiles.ini`
+(профиль может называться как угодно и лежать вне стандартной папки), анализирует
+`storage\default` и показывает данные по сайтам: размер, дату изменения, уровень риска и
+что произойдёт после удаления.
+
+- Удаляются только выбранные типы данных выбранных сайтов: **Cache API** (риск низкий),
+  **IndexedDB** (средний), **localStorage** и **файлы сайта / OPFS** (высокий).
+- Куки, пароли, история, закладки, расширения и настройки Firefox **не затрагиваются**: модуль
+  по построению не умеет удалять ничего, кроме подпапок из фиксированного списка внутри
+  `storage\default\<источник>`. Данные расширений (`moz-extension`) тоже заблокированы.
+- Пока Firefox запущен (или профиль занят — `parent.lock`), **реальное удаление запрещено целиком**:
+  иначе можно повредить базу квот. Закройте Firefox, включая фоновые процессы.
+- Работают те же защиты, что и при ручном удалении: исключения из «Настроек», тестовый прогон,
+  повторная проверка пути перед удалением и подтверждение. По желанию файлы отправляются в Корзину
+  (место освободится только после очистки Корзины).
+- Часть сайтов хранит состояние входа в IndexedDB/localStorage — на них вас могут попросить войти заново.
+  Кнопка «Выбрать рекомендуемые» отмечает только малорисковые данные.
+
+## Пропущенные элементы и журналы
+
+Всё, что приложение не смогло или не должно было трогать (занято процессом, нет доступа,
+symlink/junction, заблокировано правилами безопасности), не роняет работу, а попадает в список.
+Кнопка **«Пропущенные элементы (N)»** показывает причину, путь и подробности. Кнопка **«Логи»**
+открывает журнал текущего сеанса и папку с файлами журналов.
+
 ## Известные ограничения
 
+- Релизная сборка — один self-contained `DiskCleaner.exe` только для Windows x64 (около 150 МБ,
+  потому что внутри .NET и WPF). При первом запуске он может быть проверен SmartScreen: файл не подписан
+  сертификатом.
 - Используется только тёмная тема, без переключателя. Режим высокой контрастности не поддерживается.
 - Системные MessageBox при ошибке открытия проводника из окна логов и при сбое
   приложения (CrashReporter), а также при ошибке сохранения настроек сохраняют системное оформление.
@@ -275,3 +326,39 @@ Review и Manual — никогда, пользователь должен са�
 4. Юнит-тесты в `tests/DiskCleaner.Tests` не нужно менять для новой
    категории — они проверяют общую логику сервисов, а не конкретный список
    правил.
+
+## Публикация на GitHub и релизы
+
+Репозиторий: <https://github.com/TheMorgxx/DiskCleanerPro>. Вся логика лежит в `tools\*.ps1`
+(PowerShell 5.1+, который есть в Windows), а `.bat`-файлы — тонкие обёртки: двойной клик, и всё делается само.
+
+**`1_publish_github.bat`** — выкладывает исходники. Сам создаёт репозиторий, если папка ещё не под git,
+спрашивает имя/почту для коммитов, показывает список изменений, коммитит и пушит. Папки `bin`/`obj`
+в репозиторий не попадают (если они уже были закоммичены — убираются из индекса, файлы остаются на диске).
+Если на GitHub уже есть коммиты, которых нет у вас (например, README, созданный при создании репозитория),
+они аккуратно объединяются с вашими, без force-push.
+
+**`2_publish_release.bat`** — выпускает релиз целиком:
+
+1. проверяет `git`, .NET SDK 8 и GitHub CLI (`gh`); при необходимости предлагает поставить `gh` через winget
+   и войти в GitHub (откроется браузер);
+2. сам выкладывает исходники (шаг 1), чтобы релиз всегда собирался из коммита, который есть на GitHub;
+3. предлагает следующий тег (`v1.0.0`, затем `v1.0.1`, …) и проверяет, что он свободен;
+4. собирает **чистую копию закоммиченного кода**, запускает сборку и все тесты, публикует
+   self-contained `DiskCleaner.exe` (версия берётся из тега);
+5. проверяет, что в exe нет PDB и следов вашего профиля Windows (`Users\<имя>`);
+6. создаёт Release, загружает `DiskCleaner.exe` и `DiskCleaner.exe.sha256` и **проверяет на GitHub**, что файл
+   на месте и размер совпадает. Если загрузка оборвалась, запустите батник с тем же тегом: он докачает файлы.
+
+Параметры (добавляются после имени батника): `-Tag v1.2.0` — без вопроса о теге, `-Yes` — без подтверждений,
+`-DryRun` — всё собрать и проверить, ничего не публикуя, `-SkipTests`, `-IgnorePrivacy`.
+Пример: `2_publish_release.bat -Tag v1.1.0 -DryRun`.
+
+Дополнительные запрещённые строки для проверки exe можно задать переменной среды
+`DISKCLEANER_EXTRA_FORBIDDEN` (через `;`, от 4 символов).
+
+Запасной вариант: если на вашем ПК релиз не получается, на GitHub откройте **Actions → Release (manual) →
+Run workflow** и введите тег; релиз соберётся и опубликуется на серверах GitHub.
+
+Если что-то не получилось, скрипт пишет понятную причину (`[FAILED] ...`) и не оставляет репозиторий
+в промежуточном состоянии: после ошибки можно просто запустить его снова.
